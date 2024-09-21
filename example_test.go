@@ -1,17 +1,10 @@
-# errgroup
-[![Go Reference](https://pkg.go.dev/badge/github.com/min0625/errgroup.svg)](https://pkg.go.dev/github.com/min0625/errgroup)
+package errgroup_test
 
-A recoverable errgroup based on `x/sync/errgroup` that can recover from panics. Panics are caught and re-panicked in the Wait function.
+import (
+	"fmt"
 
-Ref: https://github.com/golang/go/issues/53757
-
-## Installation
-```sh
-go get github.com/min0625/errgroup
-```
-
-## Example
-```go
+	"github.com/min0625/errgroup"
+)
 
 func Example() {
 	// This case import "github.com/min0625/errgroup"
@@ -45,5 +38,3 @@ func Example() {
 
 	// Output: oops
 }
-
-```
