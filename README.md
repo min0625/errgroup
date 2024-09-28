@@ -1,7 +1,7 @@
 # errgroup
 [![Go Reference](https://pkg.go.dev/badge/github.com/min0625/errgroup.svg)](https://pkg.go.dev/github.com/min0625/errgroup)
 
-A recoverable errgroup based on `x/sync/errgroup` that can recover from panics. Panics are caught and re-panicked in the Wait function.
+A recoverable errgroup based on `golang.org/x/sync/errgroup` that can recover from panics. Panics are caught and re-panicked in the Wait function.
 
 Ref: https://github.com/golang/go/issues/53757
 
@@ -14,8 +14,9 @@ go get github.com/min0625/errgroup
 ```go
 
 func Example() {
-	// This case import "github.com/min0625/errgroup"
-	// If you import "golang.org/x/sync/errgroup", you can't catch the panic.
+	// This case uses "github.com/min0625/errgroup" which will catch panics.
+	// If you import "golang.org/x/sync/errgroup" instead, it won't catch panics.
+	// You can try this in the Go Playground: https://go.dev/play/p/7pUX6uQ2mCH
 	var g errgroup.Group
 
 	defer func() {
