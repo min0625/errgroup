@@ -7,8 +7,9 @@ import (
 )
 
 func Example() {
-	// This case import "github.com/min0625/errgroup"
-	// If you import "golang.org/x/sync/errgroup", you can't catch the panic.
+	// This case uses "github.com/min0625/errgroup" which will catch panics.
+	// If you import "golang.org/x/sync/errgroup" instead, it won't catch panics.
+	// You can try this in the Go Playground: https://go.dev/play/p/7pUX6uQ2mCH
 	var g errgroup.Group
 
 	defer func() {
