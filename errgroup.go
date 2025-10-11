@@ -1,7 +1,10 @@
+// Package errgroup provides a more robust error group implementation
+// that extends golang.org/x/sync/errgroup with panic recovery.
 package errgroup
 
 import (
 	"context"
+	"errors"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -61,7 +64,9 @@ func (g *Group) TryGo(f func() error) bool {
 // returns the first non-nil error (if any) from them.
 func (g *Group) Wait() error {
 	err := g.g.Wait()
-	if p, ok := err.(panicked); ok {
+
+	var p panicked
+	if errors.As(err, &p) {
 		// re-panic to keep the original stack trace
 		panic(p.panic)
 	}

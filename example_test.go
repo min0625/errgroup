@@ -35,6 +35,8 @@ func Example() {
 
 	if err := g.Wait(); err != nil {
 		// Handle error
+		fmt.Println(err)
+		return
 	}
 
 	// Output: oops
