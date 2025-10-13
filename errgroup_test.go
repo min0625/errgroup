@@ -8,6 +8,7 @@ import (
 
 	"github.com/min0625/errgroup"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Group(t *testing.T) {
@@ -32,9 +33,9 @@ func Test_Group(t *testing.T) {
 		return nil
 	})
 
-	assert.NoError(t, g.Wait())
-	assert.Equal(t, jobXIsDone, true)
-	assert.Equal(t, jobYIsDone, true)
+	require.NoError(t, g.Wait())
+	assert.True(t, jobXIsDone)
+	assert.True(t, jobYIsDone)
 }
 
 func Test_WithContext(t *testing.T) {
@@ -61,8 +62,8 @@ func Test_WithContext(t *testing.T) {
 		return nil
 	})
 
-	assert.ErrorIs(t, g.Wait(), myErr)
-	assert.Equal(t, jobIsCanceled, true)
+	require.ErrorIs(t, g.Wait(), myErr)
+	assert.True(t, jobIsCanceled, true)
 }
 
 func Test_Group_Error(t *testing.T) {
