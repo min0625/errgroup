@@ -7,7 +7,7 @@ tidy:
 	go mod tidy
 
 install-asdf:
-	asdf install
+	-asdf install
 
 install: install-asdf tidy
 # 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.5.0
@@ -22,6 +22,6 @@ lint: install
 	golangci-lint run -v ./...
 
 test: install
-	go test ./...
+	go test -v -race -failfast ./...
 
 check: fix lint test
