@@ -5,6 +5,7 @@ package errgroup
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -15,7 +16,9 @@ import (
 // A zero Group is valid, has no limit on the number of active goroutines,
 // and does not cancel on error.
 type Group struct {
-	g errgroup.Group
+	once       sync.Once
+	panicValue chan any
+	eg         errgroup.Group
 }
 
 // WithContext returns a new Group and an associated Context derived from ctx.
@@ -24,10 +27,10 @@ type Group struct {
 // returns a non-nil error or the first time Wait returns, whichever occurs
 // first.
 func WithContext(ctx context.Context) (*Group, context.Context) {
-	g, ctx := errgroup.WithContext(ctx)
+	eg, ctx := errgroup.WithContext(ctx)
 
 	return &Group{
-		g: *g, //nolint:govet // copylocks: Copy before the first use.
+		eg: *eg, //nolint:govet // copylocks: Copy before the first use.
 	}, ctx
 }
 
@@ -39,7 +42,7 @@ func WithContext(ctx context.Context) (*Group, context.Context) {
 //
 // The limit must not be modified while any goroutines in the group are active.
 func (g *Group) SetLimit(n int) {
-	g.g.SetLimit(n)
+	g.eg.SetLimit(n)
 }
 
 // Go calls the given function in a new goroutine.
@@ -49,7 +52,7 @@ func (g *Group) SetLimit(n int) {
 // The first call to return a non-nil error cancels the group's context, if the
 // group was created by calling WithContext. The error will be returned by Wait.
 func (g *Group) Go(f func() error) {
-	g.g.Go(g.do(f))
+	g.eg.Go(g.do(f))
 }
 
 // TryGo calls the given function in a new goroutine only if the number of
@@ -57,30 +60,63 @@ func (g *Group) Go(f func() error) {
 //
 // The return value reports whether the goroutine was started.
 func (g *Group) TryGo(f func() error) bool {
-	return g.g.TryGo(g.do(f))
+	return g.eg.TryGo(g.do(f))
 }
 
 // Wait blocks until all function calls from the Go method have returned, then
 // returns the first non-nil error (if any) from them.
 func (g *Group) Wait() error {
-	err := g.g.Wait()
+	g.init()
 
-	var p panicked
-	if errors.As(err, &p) {
-		// re-panic to keep the original stack trace
-		panic(p.panic)
+	waitError := make(chan error, 1)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				g.throw(exception(r))
+			}
+		}()
+
+		waitError <- g.eg.Wait()
+	}()
+
+	select {
+	case panicValue := <-g.panicValue:
+		panic(panicValue)
+	case err := <-waitError:
+		// Double check panic occurred
+		select {
+		case panicValue := <-g.panicValue:
+			panic(panicValue)
+		default:
+			return err
+		}
 	}
+}
 
-	return err
+func (g *Group) init() {
+	g.once.Do(func() {
+		g.panicValue = make(chan any, 1)
+	})
+}
+
+func (g *Group) throw(p any) {
+	g.init()
+
+	select {
+	case g.panicValue <- p:
+	default:
+	}
 }
 
 func (g *Group) do(f func() error) func() error {
 	return func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				err = panicked{
-					panic: exception(r),
-				}
+				// Return a non-nil error to ensure the context is canceled
+				err = errPanic
+
+				g.throw(exception(r))
 			}
 		}()
 
@@ -88,10 +124,4 @@ func (g *Group) do(f func() error) func() error {
 	}
 }
 
-type panicked struct {
-	panic any
-}
-
-func (p panicked) Error() string {
-	panic("unexpected call to Error")
-}
+var errPanic = errors.New("panic in errgroup.Group")
