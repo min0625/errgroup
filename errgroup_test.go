@@ -22,12 +22,16 @@ func Test_Group(t *testing.T) {
 	var g errgroup.Group
 
 	g.Go(func() error {
+		time.Sleep(100 * time.Millisecond)
+
 		jobXIsDone = true
 
 		return nil
 	})
 
 	g.Go(func() error {
+		time.Sleep(100 * time.Millisecond)
+
 		jobYIsDone = true
 
 		return nil
@@ -71,17 +75,32 @@ func Test_Group_Error(t *testing.T) {
 
 	myErr := errors.New("oops")
 
+	var (
+		jobXIsDone bool
+		jobYIsDone bool
+	)
+
 	var g errgroup.Group
 
 	g.Go(func() error {
+		time.Sleep(100 * time.Millisecond)
+
+		jobXIsDone = true
+
 		return nil
 	})
 
 	g.Go(func() error {
+		time.Sleep(100 * time.Millisecond)
+
+		jobYIsDone = true
+
 		return myErr
 	})
 
-	assert.ErrorIs(t, g.Wait(), myErr)
+	require.ErrorIs(t, g.Wait(), myErr)
+	assert.True(t, jobXIsDone)
+	assert.True(t, jobYIsDone)
 }
 
 func Test_Group_Panic(t *testing.T) {
@@ -123,6 +142,43 @@ func Test_Group_PanicValue(t *testing.T) {
 			assert.Condition(t, func() (success bool) {
 				return len(pv.Stack) > 0
 			})
+
+			t.Log(pv.String())
+			t.Log(pv.Recovered)
+			t.Log(string(pv.Stack))
+		}
+	}()
+
+	_ = g.Wait()
+}
+
+func Test_Group_PanicError(t *testing.T) {
+	t.Parallel()
+
+	panicValue := errors.New("oops")
+
+	var g errgroup.Group
+
+	g.Go(func() error {
+		return nil
+	})
+
+	g.Go(func() error {
+		panic(panicValue)
+	})
+
+	defer func() {
+		if p := recover(); p != nil {
+			pe := p.(errgroup.PanicError)
+
+			assert.Equal(t, panicValue, pe.Recovered)
+			assert.Condition(t, func() (success bool) {
+				return len(pe.Stack) > 0
+			})
+
+			t.Log(pe.Error())
+			t.Log(pe.Recovered)
+			t.Log(string(pe.Stack))
 		}
 	}()
 
