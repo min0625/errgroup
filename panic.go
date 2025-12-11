@@ -1,3 +1,5 @@
+// Package errgroup provides a more robust error group implementation
+// that extends golang.org/x/sync/errgroup with panic recovery.
 package errgroup
 
 import (
