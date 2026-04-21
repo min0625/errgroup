@@ -49,7 +49,6 @@ All commands should be run from the repository root.
 
 | Command | Description |
 |---------|-------------|
-| `make fmt` | Format all Go source files via `golangci-lint fmt` |
 | `make lint` | Run linter (`golangci-lint run`) |
 | `make fix` | Run linter with auto-fix (`golangci-lint run --fix`) |
 | `make test` | Run all tests with race detector (`go test -v -race -failfast ./...`) |
@@ -62,7 +61,6 @@ Always run `make check` before considering a change complete.
 ### Code Style
 
 - Follow standard Go conventions (`gofmt`, `goimports`).
-- Use `make fmt` to format code; do not manually reformat.
 - Exported symbols must have GoDoc comments. Keep them concise and consistent with the existing style.
 - Internal helpers (unexported) should be commented only when non-obvious.
 
