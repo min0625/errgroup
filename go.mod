@@ -1,10 +1,10 @@
 module github.com/min0625/errgroup
 
-go 1.22.12
+go 1.25.0
 
 require (
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/sync v0.8.0
+	golang.org/x/sync v0.20.0
 )
 
 require (

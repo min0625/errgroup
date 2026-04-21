@@ -15,6 +15,9 @@ import (
 //
 // A zero Group is valid, has no limit on the number of active goroutines,
 // and does not cancel on error.
+//
+// Unhandled panics from goroutines started by Go or TryGo are caught and
+// re-panicked in the Wait call, wrapped as PanicError or PanicValue.
 type Group struct {
 	once       sync.Once
 	panicValue chan any
@@ -51,6 +54,9 @@ func (g *Group) SetLimit(n int) {
 //
 // The first call to return a non-nil error cancels the group's context, if the
 // group was created by calling WithContext. The error will be returned by Wait.
+//
+// If f panics, the panic is caught and re-panicked in Wait, wrapped as a
+// PanicError or PanicValue.
 func (g *Group) Go(f func() error) {
 	g.eg.Go(g.do(f))
 }
@@ -59,12 +65,26 @@ func (g *Group) Go(f func() error) {
 // active goroutines in the group is currently below the configured limit.
 //
 // The return value reports whether the goroutine was started.
+//
+// If f panics, the panic is caught and re-panicked in Wait, wrapped as a
+// PanicError or PanicValue.
 func (g *Group) TryGo(f func() error) bool {
 	return g.eg.TryGo(g.do(f))
 }
 
 // Wait blocks until all function calls from the Go method have returned, then
 // returns the first non-nil error (if any) from them.
+//
+// If any goroutine panicked, Wait re-panics with the recovered value wrapped
+// as a PanicError (if the panic value implements error) or PanicValue.
+// If multiple goroutines panic, only the first panic is re-panicked; the rest
+// are silently discarded.
+//
+// Implementation note: Wait runs g.eg.Wait() in a separate goroutine so that
+// a panic inside eg.Wait itself (e.g. from the underlying errgroup) can also be
+// caught and forwarded through the same panicValue channel.  The inner goroutine
+// writes to a buffered channel of size 1, so it always completes and is never
+// leaked, even when Wait returns early via a panic branch.
 func (g *Group) Wait() error {
 	g.init()
 
@@ -82,9 +102,13 @@ func (g *Group) Wait() error {
 
 	select {
 	case panicValue := <-g.panicValue:
+		// A goroutine panicked before eg.Wait returned.  The inner goroutine
+		// will eventually write to waitError (buffered) and exit on its own.
 		panic(panicValue)
 	case err := <-waitError:
-		// Double check panic occurred
+		// eg.Wait returned normally; do a non-blocking check in case a panic
+		// was also sent (e.g. the goroutine panicked and the sentinel error
+		// arrived first).
 		select {
 		case panicValue := <-g.panicValue:
 			panic(panicValue)
