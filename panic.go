@@ -10,8 +10,10 @@ import (
 // A PanicError wraps an error recovered from an unhandled panic
 // when calling a function passed to Go or TryGo.
 type PanicError struct {
+	// Recovered is the error value that was passed to panic.
 	Recovered error
-	Stack     []byte
+	// Stack is the stack trace captured at the point of the panic.
+	Stack []byte
 }
 
 func (p PanicError) Error() string {
@@ -26,8 +28,10 @@ func (p PanicError) Unwrap() error { return p.Recovered }
 // recovered from an unhandled panic when calling a function passed to Go or
 // TryGo.
 type PanicValue struct {
+	// Recovered is the value that was passed to panic.
 	Recovered any
-	Stack     []byte
+	// Stack is the stack trace captured at the point of the panic.
+	Stack []byte
 }
 
 func (p PanicValue) String() string {
