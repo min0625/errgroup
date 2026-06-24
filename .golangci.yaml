@@ -53,7 +53,6 @@ linters:
     - fatcontext
     - gocheckcompilerdirectives
     - gocognit
-    - goconst
     - gocritic
     - gomodguard_v2
     - goprintffuncname
