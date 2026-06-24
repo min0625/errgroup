@@ -3,6 +3,7 @@ package errgroup_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -163,18 +164,19 @@ func Test_Group_PanicValue(t *testing.T) {
 	})
 
 	defer func() {
-		if p := recover(); p != nil {
-			pv := p.(errgroup.PanicValue)
+		p := recover()
+		require.NotNil(t, p)
 
-			assert.Equal(t, "oops", pv.Recovered)
-			assert.Condition(t, func() (success bool) {
-				return len(pv.Stack) > 0
-			})
+		pv := p.(errgroup.PanicValue)
 
-			t.Log(pv.String())
-			t.Log(pv.Recovered)
-			t.Log(string(pv.Stack))
-		}
+		assert.Equal(t, "oops", pv.Recovered)
+		assert.Condition(t, func() (success bool) {
+			return len(pv.Stack) > 0
+		})
+
+		t.Log(pv.String())
+		t.Log(pv.Recovered)
+		t.Log(string(pv.Stack))
 	}()
 
 	_ = g.Wait()
@@ -196,18 +198,19 @@ func Test_Group_PanicError(t *testing.T) {
 	})
 
 	defer func() {
-		if p := recover(); p != nil {
-			pe := p.(errgroup.PanicError)
+		p := recover()
+		require.NotNil(t, p)
 
-			assert.Equal(t, panicValue, pe.Recovered)
-			assert.Condition(t, func() (success bool) {
-				return len(pe.Stack) > 0
-			})
+		pe := p.(errgroup.PanicError)
 
-			t.Log(pe.Error())
-			t.Log(pe.Recovered)
-			t.Log(string(pe.Stack))
-		}
+		assert.Equal(t, panicValue, pe.Recovered)
+		assert.Condition(t, func() (success bool) {
+			return len(pe.Stack) > 0
+		})
+
+		t.Log(pe.Error())
+		t.Log(pe.Recovered)
+		t.Log(string(pe.Stack))
 	}()
 
 	_ = g.Wait()
@@ -278,6 +281,61 @@ func Test_Group_TryGo_ContextPropagation(t *testing.T) {
 	assert.True(t, jobIsCanceled)
 }
 
+func Test_New_NilContext(t *testing.T) {
+	t.Parallel()
+
+	// New(nil) must fall back to context.Background() instead of panicking,
+	// and the goroutine must receive a usable (non-nil, not-yet-canceled)
+	// context.
+	g := errgroup.New(nil) //nolint:staticcheck // SA1012: nil context is the case under test.
+
+	// Check the context inside the goroutine: Wait cancels the derived context
+	// when it returns, so it must be inspected before then.
+	g.Go(func(ctx context.Context) error {
+		require.NotNil(t, ctx)
+		assert.NoError(t, ctx.Err())
+
+		return nil
+	})
+
+	require.NoError(t, g.Wait())
+}
+
+func Test_Group_MultiplePanics(t *testing.T) {
+	t.Parallel()
+
+	// When several goroutines panic concurrently, Wait re-panics with a single
+	// recovered value; the other panics are silently discarded rather than
+	// collected. This exercises the throw drop path (channel already full) and
+	// asserts Wait neither deadlocks nor races (run under -race).
+	const n = 10
+
+	var g errgroup.Group
+
+	start := make(chan struct{})
+
+	for i := range n {
+		g.Go(func(_ context.Context) error {
+			<-start
+
+			panic(fmt.Sprintf("panic %d", i))
+		})
+	}
+
+	close(start)
+
+	defer func() {
+		p := recover()
+		require.NotNil(t, p)
+
+		pv, ok := p.(errgroup.PanicValue)
+		require.True(t, ok)
+		assert.Contains(t, pv.Recovered, "panic ")
+	}()
+
+	_ = g.Wait()
+}
+
 func Test_Group_TryGo_Panic(t *testing.T) {
 	t.Parallel()
 
@@ -290,14 +348,15 @@ func Test_Group_TryGo_Panic(t *testing.T) {
 	require.True(t, accepted)
 
 	defer func() {
-		if p := recover(); p != nil {
-			pv := p.(errgroup.PanicValue)
+		p := recover()
+		require.NotNil(t, p)
 
-			assert.Equal(t, "oops from TryGo", pv.Recovered)
-			assert.Condition(t, func() (success bool) {
-				return len(pv.Stack) > 0
-			})
-		}
+		pv := p.(errgroup.PanicValue)
+
+		assert.Equal(t, "oops from TryGo", pv.Recovered)
+		assert.Condition(t, func() (success bool) {
+			return len(pv.Stack) > 0
+		})
 	}()
 
 	_ = g.Wait()
