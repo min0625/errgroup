@@ -2,6 +2,8 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/min0625/errgroup/x/errgroup.svg)](https://pkg.go.dev/github.com/min0625/errgroup/x/errgroup)
 [![codecov](https://codecov.io/gh/min0625/errgroup/branch/main/graph/badge.svg)](https://codecov.io/gh/min0625/errgroup)
 
+**English** | [繁體中文](README.zh-TW.md)
+
 A context-aware variant of [`github.com/min0625/errgroup`](../../README.md) that passes a derived `context.Context` directly into each goroutine function, eliminating the need to capture the context via closure.
 
 ## Differences from the root package
@@ -22,7 +24,16 @@ go get github.com/min0625/errgroup/x/errgroup
 ## Example
 
 ```go
-func Example() {
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/min0625/errgroup/x/errgroup"
+)
+
+func main() {
 	// This case uses "github.com/min0625/errgroup/x/errgroup" which will catch panics.
 	// If you import "golang.org/x/sync/errgroup" instead, it won't catch panics.
 	var g errgroup.Group
