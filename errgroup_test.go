@@ -221,6 +221,107 @@ func Test_Group_TryGo(t *testing.T) {
 	require.NoError(t, g.Wait())
 }
 
+func Test_Group_PanicError_Unwrap(t *testing.T) {
+	t.Parallel()
+
+	sentinel := errors.New("oops")
+
+	var g errgroup.Group
+
+	g.Go(func() error {
+		panic(sentinel)
+	})
+
+	defer func() {
+		p := recover()
+		require.NotNil(t, p)
+
+		err, ok := p.(error)
+		require.True(t, ok)
+
+		// PanicError.Unwrap exposes the original error to errors.Is/As.
+		require.ErrorIs(t, err, sentinel)
+
+		var pe errgroup.PanicError
+		require.ErrorAs(t, err, &pe)
+		assert.Equal(t, sentinel, pe.Recovered)
+	}()
+
+	_ = g.Wait()
+}
+
+func Test_Group_Panic_AlreadyPanicError(t *testing.T) {
+	t.Parallel()
+
+	orig := errgroup.PanicError{
+		Recovered: errors.New("oops"),
+		Stack:     []byte("original stack"),
+	}
+
+	var g errgroup.Group
+
+	g.Go(func() error {
+		panic(orig)
+	})
+
+	defer func() {
+		p := recover()
+		require.NotNil(t, p)
+
+		// An already-wrapped PanicError is propagated unchanged, not
+		// re-wrapped (the original Stack is preserved).
+		pe, ok := p.(errgroup.PanicError)
+		require.True(t, ok)
+		assert.Equal(t, orig, pe)
+	}()
+
+	_ = g.Wait()
+}
+
+func Test_Group_Panic_AlreadyPanicValue(t *testing.T) {
+	t.Parallel()
+
+	orig := errgroup.PanicValue{
+		Recovered: "oops",
+		Stack:     []byte("original stack"),
+	}
+
+	var g errgroup.Group
+
+	g.Go(func() error {
+		panic(orig)
+	})
+
+	defer func() {
+		p := recover()
+		require.NotNil(t, p)
+
+		// An already-wrapped PanicValue is propagated unchanged, not
+		// re-wrapped (the original Stack is preserved).
+		pv, ok := p.(errgroup.PanicValue)
+		require.True(t, ok)
+		assert.Equal(t, orig, pv)
+	}()
+
+	_ = g.Wait()
+}
+
+func Test_PanicValue_String_WithoutStack(t *testing.T) {
+	t.Parallel()
+
+	pv := errgroup.PanicValue{Recovered: "oops"}
+
+	assert.Equal(t, "recovered from errgroup.Group: oops", pv.String())
+}
+
+func Test_PanicValue_String_WithStack(t *testing.T) {
+	t.Parallel()
+
+	pv := errgroup.PanicValue{Recovered: "oops", Stack: []byte("the stack")}
+
+	assert.Equal(t, "recovered from errgroup.Group: oops\nthe stack", pv.String())
+}
+
 func Test_Group_TryGo_Panic(t *testing.T) {
 	t.Parallel()
 
