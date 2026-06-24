@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 This file provides instructions and conventions for AI coding agents working in this repository.
 
@@ -8,26 +8,31 @@ This file provides instructions and conventions for AI coding agents working in 
 
 ### Packages
 
-| Path | Module path | Description |
-|------|-------------|-------------|
-| `/` (root) | `github.com/min0625/errgroup` | Drop-in replacement for `golang.org/x/sync/errgroup` |
-| `x/errgroup/` | `github.com/min0625/errgroup/x/errgroup` | Context-aware variant — passes `context.Context` into each goroutine function |
+A single Go module (`github.com/min0625/errgroup`) holds two packages:
+
+| Import path | Description |
+|-------------|-------------|
+| `github.com/min0625/errgroup` | Drop-in replacement for `golang.org/x/sync/errgroup` |
+| `github.com/min0625/errgroup/x/errgroup` | Context-aware variant — passes `context.Context` into each goroutine function |
 
 ## Repository Structure
 
 ```
-errgroup.go          # Core Group type and methods
-panic.go             # PanicError, PanicValue types and exception() helper
+errgroup.go          # Core Group type and methods (WithContext, Go, TryGo, Wait, SetLimit)
+panic.go             # PanicError, PanicValue types and the exception() helper
 errgroup_test.go     # Tests for the root package
 example_test.go      # Runnable examples for the root package
-go.mod               # Module definition
+README.md            # Root package docs
+go.mod / go.sum      # Module definition
 Makefile             # Developer commands
 mise.toml            # Pinned tool versions (Go, golangci-lint)
+.golangci.yaml       # Linter configuration
 x/errgroup/
-    errgroup.go      # Context-aware Group type
-    panic.go         # Re-exports panic types from the root package (if any)
+    errgroup.go      # Context-aware Group type (New constructor instead of WithContext)
+    panic.go         # Type-alias re-exports of PanicError / PanicValue from the root package
     errgroup_test.go # Tests for the x/errgroup package
     example_test.go  # Runnable examples for the x/errgroup package
+    README.md        # x/errgroup package docs
 ```
 
 ## Tool Versions
@@ -40,7 +45,7 @@ mise install
 
 | Tool | Version |
 |------|---------|
-| Go | 1.24.x |
+| Go | 1.26.x (module requires go 1.25) |
 | golangci-lint | 2.x |
 
 ## Common Commands
@@ -49,10 +54,14 @@ All commands should be run from the repository root.
 
 | Command | Description |
 |---------|-------------|
-| `make lint` | Run linter (`golangci-lint run`) |
-| `make fix` | Run linter with auto-fix (`golangci-lint run --fix`) |
-| `make test` | Run all tests with race detector (`go test -v -race -failfast ./...`) |
-| `make check` | Run `lint` then `test` (full CI gate) |
+| `make lint` | Verify lint config, then run `golangci-lint run` (new issues vs `HEAD`) |
+| `make fix` | `go mod tidy`, then `golangci-lint run --fix` (new issues vs `HEAD`) |
+| `make test` | Run all tests with race detector (`go test -race -failfast ./...`) |
+| `make check-tidy` | Verify `go.mod` is tidy (`go mod tidy -diff`) |
+| `make cover` | Run tests with coverage and print the per-function summary |
+| `make check` | Run `check-tidy`, `lint`, then `test` (full CI gate) |
+
+`lint`/`fix` compare against `NEW_FROM_REV` (default `HEAD`); override it to widen the range, e.g. `make lint NEW_FROM_REV=main`.
 
 Always run `make check` before considering a change complete.
 
@@ -81,7 +90,7 @@ Always run `make check` before considering a change complete.
 
 ### Dual-Package Consistency
 
-Changes to the root package (`errgroup.go`, `panic.go`) that affect the public API or panic-recovery behaviour must be reflected in `x/errgroup/` where applicable, and vice versa.
+Changes to the root package (`errgroup.go`, `panic.go`) that affect the public API or panic-recovery behaviour must be reflected in `x/errgroup/` where applicable, and vice versa. The `x/errgroup` panic types are type aliases of the root types, so they stay in sync automatically.
 
 ### Dependencies
 
@@ -90,5 +99,7 @@ Changes to the root package (`errgroup.go`, `panic.go`) that affect the public A
 
 ### Linting
 
-- The project uses `golangci-lint`. Lint rules are configured in the repository (check for `.golangci.yml` or inline `//nolint` directives).
+- The project uses `golangci-lint`, configured in `.golangci.yaml`.
 - Suppress a lint warning with `//nolint:<linter> // <reason>` only when genuinely necessary, not to silence legitimate issues.
+</content>
+</invoke>

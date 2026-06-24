@@ -1,5 +1,6 @@
 # errgroup
 [![Go Reference](https://pkg.go.dev/badge/github.com/min0625/errgroup.svg)](https://pkg.go.dev/github.com/min0625/errgroup)
+[![codecov](https://codecov.io/gh/min0625/errgroup/branch/main/graph/badge.svg)](https://codecov.io/gh/min0625/errgroup)
 
 A recoverable errgroup based on `golang.org/x/sync/errgroup` that can recover from panics. Panics are caught and re-panicked in the `Wait` call.
 
