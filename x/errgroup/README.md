@@ -1,5 +1,6 @@
 # errgroup/x/errgroup
 [![Go Reference](https://pkg.go.dev/badge/github.com/min0625/errgroup/x/errgroup.svg)](https://pkg.go.dev/github.com/min0625/errgroup/x/errgroup)
+[![codecov](https://codecov.io/gh/min0625/errgroup/branch/main/graph/badge.svg)](https://codecov.io/gh/min0625/errgroup)
 
 A context-aware variant of [`github.com/min0625/errgroup`](../../README.md) that passes a derived `context.Context` directly into each goroutine function, eliminating the need to capture the context via closure.
 
